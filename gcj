@@ -1,0 +1,29 @@
+#! /usr/bin/env node
+const gprac = require('./gprac/gprac.js');
+const { getStoredData, getStoredSession, login, fail, merge, getBranchByJira, gitCheckout, saveData } = gprac;
+
+const storedData = getStoredData();
+const storedSession = getStoredSession();
+const data = storedData && storedData['gcj'] ? storedData['gcj'] : {};
+
+const args = process.argv.slice(2);
+const jiraNum = args[0];
+if (!jiraNum) fail('No ticket number given');
+
+if (data && data[jiraNum]) {
+  const branch = data[jiraNum];
+  gitCheckout(data[jiraNum]);
+} else {
+  login(storedSession)
+  .then(session => {
+    return getBranchByJira(jiraNum);
+  })
+  .then(branch => {
+    data[jiraNum] = branch;
+    saveData(merge({gcj: data}, storedData));
+    gitCheckout(branch);
+  })
+  .catch(e => {
+    fail('Error');
+  });
+}
